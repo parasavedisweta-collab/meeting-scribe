@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Underwriter Co-pilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "secondary": "#006b61", "secondary-container": "#85f6e5",
+        "primary-container": "#cce5ff", "primary-fixed": "#cce5ff",
+        "tertiary-dim": "#415660", "tertiary-container": "#d8effb",
+        "surface-container-highest": "#dbe4e7", "secondary-fixed-dim": "#76e7d7",
+        "secondary-fixed": "#85f6e5", "on-primary": "#f4f8ff",
+        "on-secondary": "#e2fff9", "surface-container-low": "#f1f4f6",
+        "error-dim": "#4e0309", "error": "#9f403d",
+        "inverse-on-surface": "#9b9d9e", "tertiary-container": "#d8effb",
+        "primary-dim": "#005784", "on-background": "#2b3437",
+        "surface-container-lowest": "#ffffff", "primary-fixed-dim": "#afd9ff",
+        "tertiary-fixed": "#d8effb", "on-error-container": "#752121",
+        "surface-tint": "#006496", "secondary-dim": "#005e55",
+        "surface-bright": "#f8f9fa", "primary": "#006496",
+        "on-error": "#fff7f6", "on-primary-fixed": "#004367",
+        "surface-container": "#eaeff1", "on-tertiary": "#f2faff",
+        "on-primary-container": "#005683", "inverse-surface": "#0c0f10",
+        "surface": "#f8f9fa", "surface-variant": "#dbe4e7",
+        "on-surface-variant": "#586064", "surface-container-high": "#e3e9ec",
+        "background": "#f8f9fa", "tertiary": "#4d626c",
+        "surface-dim": "#d1dce0", "outline-variant": "#abb3b7",
+        "on-surface": "#2b3437", "inverse-primary": "#79bff8",
+        "on-secondary-container": "#005c53", "error-container": "#fe8983",
+        "outline": "#737c7f", "on-secondary-fixed": "#004841",
+        "on-tertiary-fixed": "#334751", "on-tertiary-container": "#455a64"
+      },
+      borderRadius: { DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", "2xl": "1rem", "3xl": "1.5rem", full: "9999px" },
+      fontFamily: { headline: ["Manrope","sans-serif"], body: ["Inter","sans-serif"], label: ["Inter","sans-serif"] }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  h1,h2,h3,h4 { font-family: 'Manrope', sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; }
+  .ms-fill { font-variation-settings: 'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+  .glass-panel { background: rgba(255,255,255,0.82); backdrop-filter: blur(12px); }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .thin-scroll::-webkit-scrollbar { width: 3px; }
+  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+  .thin-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+  .fade-in { animation: fadeUp .25s ease-out; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .slide-in { animation: slideIn .2s ease-out; }
+  @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+  .chat-typing span { display:inline-block; width:5px; height:5px; border-radius:50%; background:#006496; margin:0 1px; animation: bounce 1s infinite; }
+  .chat-typing span:nth-child(2) { animation-delay:.15s; }
+  .chat-typing span:nth-child(3) { animation-delay:.3s; }
+  @keyframes bounce { 0%,80%,100% { transform:translateY(0); } 40% { transform:translateY(-5px); } }
+</style>
+</head>
+<body class="bg-background text-on-surface antialiased h-screen overflow-hidden flex flex-col">
+
+<!-- ── Top Nav ─────────────────────────────────────────────────────────── -->
+<nav class="fixed top-0 w-full z-50 bg-[#f8f9fa] border-b border-outline-variant/20 flex justify-between items-center px-6 h-16 shrink-0">
+  <span class="text-lg font-bold text-primary font-headline">The Underwriter Co-pilot</span>
+    <!-- Provider toggle -->
+    <div class="flex items-center gap-1 bg-surface-container-high rounded-full p-1 ml-4">
+      <button id="providerGemini" onclick="window.setProvider('gemini')"
+              class="px-3 py-1 rounded-full text-xs font-bold transition-all bg-primary text-on-primary">
+        Gemini
+      </button>
+      <button id="providerOpenAI" onclick="window.setProvider('openai')"
+              class="px-3 py-1 rounded-full text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface">
+        ChatGPT
+      </button>
+    </div>
+  <div class="flex items-center gap-4">
+    <!-- Live timer -->
+    <div id="liveTimer" class="hidden items-center gap-2 px-3 py-1 bg-red-50 text-error rounded-full text-xs font-bold">
+      <span class="w-2 h-2 bg-error rounded-full animate-pulse"></span>
+      <span id="timerDisplay">00:00</span>
+    </div>
+    <!-- Borrower name (shown in session) -->
+    <span id="headerBorrower" class="hidden text-sm font-semibold text-on-surface-variant border border-outline-variant/30 px-3 py-1 rounded-full"></span>
+    <!-- Session controls -->
+    <div id="sessionControls" class="hidden items-center gap-3">
+      <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-high rounded-full">
+        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wide">Session</span>
+        <button id="recordBtn" onclick="window.toggleRecording()"
+                class="bg-primary text-on-primary px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95">
+          Start
+        </button>
+      </div>
+      <button onclick="window.backToPicker()"
+              class="flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-error transition-colors px-3 py-1.5 rounded-full hover:bg-red-50">
+        <span class="material-symbols-outlined text-sm">logout</span> End
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Scenario Picker ─────────────────────────────────────────────────── -->
+<div id="picker" class="flex-1 flex flex-col items-center justify-center pt-16 px-8 gap-8 overflow-y-auto">
+  <div class="text-center">
+    <h2 class="text-2xl font-extrabold text-on-surface font-headline mb-1">Select a Borrower Scenario</h2>
+    <p class="text-sm text-on-surface-variant">Choose a case to begin the underwriting conversation</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl" id="pickerGrid"></div>
+</div>
+
+<!-- ── Main App Layout ─────────────────────────────────────────────────── -->
+<div id="mainPanel" class="hidden flex-1 pt-16 overflow-hidden w-full">
+<div class="flex h-full w-full overflow-hidden">
+
+  <!-- ── Left Sidebar: Borrower Profile ──────────────────────────────── -->
+  <aside class="w-72 bg-surface-container-low flex flex-col overflow-y-auto thin-scroll border-r border-outline-variant/10 shrink-0">
+    <div class="p-6 space-y-6">
+
+      <!-- Section: Borrower Profile -->
+      <div>
+        <h3 class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-[0.12em] mb-4">Borrower Profile</h3>
+        <div id="profileCards" class="space-y-3"></div>
+      </div>
+
+      <!-- Section: Red Flags -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-[0.12em]">Red Flags</h3>
+          <span id="rfCountBadge" class="bg-error text-on-error text-[9px] px-2 py-0.5 rounded-full font-bold">0</span>
+        </div>
+        <div id="redFlagsList" class="space-y-2"></div>
+      </div>
+
+      <!-- Section: Data Points Collected (from copilot) -->
+      <div id="dpSection" class="hidden border-t border-outline-variant/10 pt-5">
+        <h3 class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-[0.12em] mb-3">Data Points Collected</h3>
+        <div id="dpCards" class="space-y-2"></div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── Center: Live Transcript ─────────────────────────────────────── -->
+  <section class="flex-1 flex flex-col overflow-hidden bg-surface border-r border-outline-variant/10 min-w-0">
+
+    <!-- Transcript header -->
+    <header class="h-14 flex items-center justify-between px-8 border-b border-outline-variant/10 bg-surface shrink-0">
+      <h2 class="font-headline font-bold text-sm">Live Transcript</h2>
+      <div id="statusPill" class="hidden items-center gap-1.5 text-[10px] font-bold text-secondary bg-secondary-container/30 px-3 py-1 rounded-full uppercase tracking-wider">
+        <span class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></span>
+        <span id="statusPillText">Live Recording</span>
+      </div>
+    </header>
+
+    <!-- Transcript feed -->
+    <div class="flex-1 overflow-y-auto p-8 space-y-5 thin-scroll bg-[#fcfdfe]" id="transcriptFeed">
+      <div id="transcriptEmpty" class="flex flex-col items-center justify-center h-full gap-3 text-on-surface-variant/40">
+        <span class="material-symbols-outlined text-5xl">record_voice_over</span>
+        <p class="text-sm">Start the conversation to see the live transcript</p>
+      </div>
+    </div>
+
+    <!-- Note input -->
+    <div class="shrink-0 p-4 bg-surface border-t border-outline-variant/10">
+      <div class="flex items-center gap-3 bg-surface-container-low rounded-full px-5 py-2.5 border border-outline-variant/20">
+        <span class="material-symbols-outlined text-on-surface-variant text-lg">edit_note</span>
+        <input id="noteInput" onkeydown="if(event.key==='Enter')window.submitNote()"
+               class="bg-transparent border-none focus:ring-0 flex-1 text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none"
+               placeholder="Add a note to the transcript…" type="text"/>
+        <button onclick="window.submitNote()"
+                class="bg-primary text-on-primary w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity shrink-0">
+          <span class="material-symbols-outlined text-sm">send</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Right Panel: Checklist + Co-pilot AI Chat ─────────────────── -->
+  <aside id="rightPanel" class="w-80 flex flex-col bg-surface-container-lowest border-l border-outline-variant/10 shrink-0">
+
+    <!-- Header -->
+    <header class="h-14 flex items-center justify-between px-5 border-b border-outline-variant/10 shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-xl ms-fill">fact_check</span>
+        <h2 class="font-headline font-bold text-sm">Question Checklist</h2>
+      </div>
+      <div id="aiAnalyzingDot" class="hidden items-center gap-1.5 text-[9px] text-secondary font-bold">
+        <span class="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse"></span>
+        Analyzing
+      </div>
+    </header>
+
+    <!-- Top: Checklist (shrinks to content) -->
+    <div class="px-3 pt-3 pb-2 space-y-3 shrink-0 overflow-y-auto thin-scroll" style="max-height:55%">
+
+      <!-- Income Assessment -->
+      <div>
+        <div class="flex items-center gap-1.5 mb-2">
+          <span class="material-symbols-outlined text-on-surface-variant/50 text-sm">payments</span>
+          <span class="text-[9px] font-extrabold text-on-surface-variant uppercase tracking-wider">Income Assessment</span>
+        </div>
+        <div id="checklistIncome" class="space-y-1.5"></div>
+      </div>
+
+      <!-- Red Flags -->
+      <div>
+        <div class="flex items-center gap-1.5 mb-2">
+          <span class="material-symbols-outlined text-error/60 text-sm">flag</span>
+          <span class="text-[9px] font-extrabold text-on-surface-variant uppercase tracking-wider">Red Flags</span>
+        </div>
+        <div id="checklistFlags" class="space-y-1.5"></div>
+      </div>
+
+    </div>
+
+    <!-- Divider -->
+    <div class="mx-3 border-t border-outline-variant/15 shrink-0"></div>
+
+    <!-- Bottom: Chat section (flex-1 fills remaining space) -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- Chat header -->
+      <div class="px-3 pt-3 pb-2 flex items-center gap-2 shrink-0">
+        <div class="w-2 h-2 bg-secondary rounded-full"></div>
+        <h2 class="font-headline font-bold text-sm text-on-surface">Co-pilot AI Chat</h2>
+      </div>
+
+      <!-- Context card -->
+      <div id="chatContext" class="hidden mx-3 mb-2 p-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl shrink-0">
+        <div class="flex items-start gap-3">
+          <div class="bg-secondary/10 p-1.5 rounded-lg shrink-0">
+            <span class="material-symbols-outlined text-secondary text-sm ms-fill">auto_awesome</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-[9px] text-on-surface-variant uppercase font-bold tracking-tight mb-0.5">Discussing Insight</p>
+            <p id="chatContextText" class="text-xs font-semibold leading-snug text-on-surface line-clamp-2"></p>
+          </div>
+          <button onclick="window.closeChatPanel()" class="text-on-surface-variant/40 hover:text-error shrink-0">
+            <span class="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages — scrollable, fills remaining space -->
+      <div id="chatMessages" class="flex-1 overflow-y-auto thin-scroll px-3 pb-3 space-y-3">
+        <div id="chatEmpty" class="flex flex-col items-center justify-center h-full gap-3 text-on-surface-variant/25">
+          <span class="material-symbols-outlined text-4xl">chat_bubble_outline</span>
+          <p class="text-[11px] text-center leading-relaxed">Click <strong>"Ask about this"</strong><br/>on any AI insight to start chatting</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Chat input (always pinned to bottom) -->
+    <div class="shrink-0 px-3 py-3 border-t border-outline-variant/10">
+      <div class="relative flex items-center">
+        <input id="chatInput" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window.sendChatMessage();}"
+               class="w-full bg-surface-container-low border-2 border-primary/20 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-2xl py-3 pl-4 pr-12 text-sm placeholder:text-on-surface-variant/60 outline-none transition-all"
+               placeholder="Ask a follow-up question…" type="text"/>
+        <button onclick="window.sendChatMessage()"
+                class="absolute right-2 w-8 h-8 bg-primary text-on-primary rounded-xl flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform">
+          <span class="material-symbols-outlined text-sm">send</span>
+        </button>
+      </div>
+      <p class="text-[9px] text-on-surface-variant/50 text-center mt-2">Enter to send · responses from AI</p>
+    </div>
+
+  </aside>
+
+</div><!-- end flex row -->
+</div><!-- end mainPanel -->
+
+<script>
+(() => {
+  /* ──────────────────────────────────────────────────────────────
+     State
+  ────────────────────────────────────────────────────────────── */
+  let ws = null, captureCtx = null, micStream = null, workletNode = null;
+  let connected = false, isRecording = false;
+  let scenarios = [], timerInterval = null, callSeconds = 0;
+  let currentProvider = 'gemini';
+  let currentCaseId = null;
+  let chatHistory = [];
+  let currentChatContext = '';
+  let copilotCardId = 0;
+  const copilotContextMap = new Map();
+  let checklistItems = [];
+
+  /* ──────────────────────────────────────────────────────────────
+     DOM refs
+  ────────────────────────────────────────────────────────────── */
+  const picker           = document.getElementById('picker');
+  const pickerGrid       = document.getElementById('pickerGrid');
+  const mainPanel        = document.getElementById('mainPanel');
+  const sessionControls  = document.getElementById('sessionControls');
+  const recordBtn        = document.getElementById('recordBtn');
+  const headerBorrower   = document.getElementById('headerBorrower');
+  const liveTimer        = document.getElementById('liveTimer');
+  const timerDisplay     = document.getElementById('timerDisplay');
+  const transcriptFeed   = document.getElementById('transcriptFeed');
+  const transcriptEmpty  = document.getElementById('transcriptEmpty');
+  const statusPill       = document.getElementById('statusPill');
+  const statusPillText   = document.getElementById('statusPillText');
+  const profileCards     = document.getElementById('profileCards');
+  const redFlagsList     = document.getElementById('redFlagsList');
+  const rfCountBadge     = document.getElementById('rfCountBadge');
+  const dpSection        = document.getElementById('dpSection');
+  const dpCards          = document.getElementById('dpCards');
+  const rightPanel       = document.getElementById('rightPanel');
+  const checklistIncome  = document.getElementById('checklistIncome');
+  const checklistFlags   = document.getElementById('checklistFlags');
+  const aiAnalyzingDot   = document.getElementById('aiAnalyzingDot');
+  const chatContext      = document.getElementById('chatContext');
+  const chatMessages     = document.getElementById('chatMessages');
+  const chatContextText  = document.getElementById('chatContextText');
+  const chatInput        = document.getElementById('chatInput');
+
+  /* ──────────────────────────────────────────────────────────────
+     Helpers
+  ────────────────────────────────────────────────────────────── */
+  const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const scrollBot = el => requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  const timeStr = () => new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+
+  /* ──────────────────────────────────────────────────────────────
+     Toggle collapsible sections (red flag metadata)
+  ────────────────────────────────────────────────────────────── */
+  function toggleSection(bodyId, chevId) {
+    const body = document.getElementById(bodyId);
+    const chev = document.getElementById(chevId);
+    if (!body) return;
+    const hidden = body.classList.toggle('hidden');
+    if (chev) chev.style.transform = hidden ? '' : 'rotate(180deg)';
+  }
+  window.toggleSection = toggleSection;
+
+  /* ──────────────────────────────────────────────────────────────
+     Load & render scenario picker
+  ────────────────────────────────────────────────────────────── */
+  async function loadScenarios() {
+    const res = await fetch('/api/scenarios');
+    scenarios = await res.json();
+    pickerGrid.innerHTML = '';
+    for (const s of scenarios) {
+      const card = document.createElement('div');
+      card.className = 'p-5 bg-white rounded-2xl border border-outline-variant/20 shadow-sm cursor-pointer hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group';
+      card.onclick = () => selectScenario(s.case_id);
+      const fc = s.red_flag_count >= 2 ? 'bg-red-50 text-error border-error/20' : 'bg-amber-50 text-amber-700 border-amber-200';
+      card.innerHTML = `
+        <div class="flex justify-between items-start mb-3">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-extrabold text-base font-headline group-hover:bg-primary group-hover:text-white transition-all">
+            ${esc(s.customer_name.charAt(0))}</div>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border ${fc}">
+            ${s.red_flag_count} flag${s.red_flag_count!==1?'s':''}</span>
+        </div>
+        <h3 class="font-headline font-bold text-base text-on-surface mb-0.5">${esc(s.customer_name)}</h3>
+        <p class="text-xs text-on-surface-variant">${esc(s.profile_type)} · ${esc(s.segment)}</p>
+        <p class="text-xs text-on-surface-variant mt-0.5">${esc(s.loan_type)} · ₹${esc(s.loan_amount)}</p>`;
+      pickerGrid.appendChild(card);
+    }
+  }
+
+  async function selectScenario(caseId) {
+    currentCaseId = caseId;
+    if (!connected) await connectWs();
+    if (ws?.readyState === 1)
+      ws.send(JSON.stringify({ type: 'select_scenario', case_id: caseId }));
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Populate left sidebar
+  ────────────────────────────────────────────────────────────── */
+  function populateLeftPanel(sc) {
+    // Profile cards
+    const claimedLabel = sc.claimed_sales_label || 'Claimed Income';
+    const claimedVal   = sc.claimed_sales ? `₹${sc.claimed_sales}` : '—';
+    profileCards.innerHTML = `
+      <div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10">
+        <p class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Employment / Profile</p>
+        <p class="text-sm font-bold font-headline">${esc(sc.profile_type)}</p>
+        <p class="text-xs text-on-surface-variant">${esc(sc.segment)}</p>
+      </div>
+      <div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10">
+        <p class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Application Type</p>
+        <p class="text-sm font-bold font-headline">${esc(sc.loan_type)}</p>
+        <p class="text-xs text-on-surface-variant">${esc(claimedLabel)}: ${esc(claimedVal)}</p>
+      </div>
+      <div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10">
+        <p class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Requested Amount</p>
+        <p class="text-2xl font-black font-headline text-primary">₹${esc(sc.loan_amount)}</p>
+      </div>
+      <div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-outline-variant/10">
+        <p class="text-[9px] text-on-surface-variant font-bold uppercase tracking-wider mb-2">Banking</p>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-on-surface-variant">Avg Monthly Credit</span>
+          <span class="font-bold">₹${esc(sc.avg_monthly_credit||'—')}</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-on-surface-variant">Avg UPI Credit</span>
+          <span class="font-bold">₹${esc(sc.avg_upi_credit||'—')}</span>
+        </div>
+      </div>`;
+
+    // Red flags
+    const rfData = sc.red_flags || [];
+    rfCountBadge.textContent = String(rfData.length).padStart(2,'0');
+    redFlagsList.innerHTML = '';
+    if (rfData.length) {
+      rfData.forEach((rf, i) => {
+        const uid   = `rf${i}`;
+        const first = i === 0;
+        const title = rfTypeLabel(rf.type || rf.code || 'Flag');
+        const desc  = rfDescription(rf);
+        const meta  = rfMetadata(rf);
+        const icon  = first ? 'report' : 'warning';
+        const div = document.createElement('div');
+        div.className = `rounded-xl overflow-hidden fade-in ${first ? '' : ''}`;
+        div.innerHTML = `
+          <button onclick="toggleSection('${uid}-body','${uid}-chev')"
+                  class="w-full flex items-start gap-3 p-3 text-left rounded-xl transition-colors
+                         ${first ? 'bg-error-container/20 hover:bg-error-container/30' : 'bg-surface-container-highest/50 hover:bg-surface-container-highest'}">
+            <span class="material-symbols-outlined shrink-0 mt-0.5 ${first ? 'text-error' : 'text-on-surface-variant'} text-xl">${icon}</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold ${first ? 'text-on-error-container' : ''}">${esc(title)}</p>
+              <p class="text-[10px] text-on-surface-variant mt-0.5 leading-snug">${esc(desc)}</p>
+            </div>
+            ${meta ? `<span class="material-symbols-outlined text-sm text-on-surface-variant/40 shrink-0 mt-0.5 transition-transform duration-200" id="${uid}-chev">expand_more</span>` : ''}
+          </button>
+          ${meta ? `<div id="${uid}-body" class="hidden px-3 pb-3 pt-2 border-t border-outline-variant/10 bg-white/60 text-[10px]">${meta}</div>` : ''}`;
+        redFlagsList.appendChild(div);
+      });
+    } else {
+      redFlagsList.innerHTML = '<p class="text-xs text-on-surface-variant">No red flags</p>';
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Red flag helpers
+  ────────────────────────────────────────────────────────────── */
+  function rfTypeLabel(type) {
+    const m = {
+      'FOIR_ratio':'FOIR Breach','FOIR_breach':'FOIR Breach',
+      'unsecured_pct_portfolio':'High Unsecured Exposure',
+      'active_loan_count_mismatch':'Bank/Bureau Mismatch',
+      'aggressive_borrowing':'Aggressive Borrowing',
+      'high_loan_velocity':'High Loan Velocity',
+      'recent_delinquency':'Recent Delinquency',
+      'historical_delinquency':'Historical Delinquency',
+      'declining_abb':'Declining Bank Balance',
+      'business_income_stopped':'Business Income Stopped',
+    };
+    return m[type] || type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  }
+
+  function rfDescription(rf) {
+    if (rf.type==='FOIR_ratio'||rf.type==='FOIR_breach')
+      return `Obligation ₹${rf.total_obligation||rf.total_existing_emi} vs income ₹${rf.income||rf.total_income}`;
+    if (rf.type==='unsecured_pct_portfolio') return `${rf.value} unsecured — exceeds 70% limit`;
+    if (rf.type==='active_loan_count_mismatch') return `Bureau: ${rf.bureau_count} loans, Bank: ${rf.bank_count}`;
+    if (rf.type==='aggressive_borrowing'||rf.type==='high_loan_velocity')
+      return `${rf.total_loans_in_6_months} loans in last 6 months`;
+    if (rf.type==='recent_delinquency'||rf.type==='historical_delinquency')
+      return `${rf.lender} ${rf.loan_type} — max DPD ${rf.max_dpd} days`;
+    if (rf.type==='declining_abb') return `₹${rf.start_value} → ₹${rf.end_value} (${rf.decline_pct})`;
+    if (rf.type==='business_income_stopped') return `Zero income: ${(rf.zero_income_months||[]).join(', ')}`;
+    return '';
+  }
+
+  function rfMetadata(rf) {
+    let h = '';
+    if (rf.emi_breakdown?.length) {
+      h += `<p class="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5">EMI Breakdown</p>`;
+      for (const l of rf.emi_breakdown)
+        h += `<div class="py-1.5 border-b border-outline-variant/10 last:border-0">
+          <div class="flex justify-between font-semibold">${esc(l.type)} · ${esc(l.lender)}<span>₹${esc(l.emi)}</span></div>
+          <div class="flex justify-between text-on-surface-variant mt-0.5">
+            <span>O/S ₹${esc(l.outstanding)}${l.outstanding_pct?` (${esc(l.outstanding_pct)})`:''}
+            </span>${l.closure_probability?`<span>${esc(l.closure_probability)}</span>`:''}
+          </div>${l.note?`<p class="text-amber-700 italic mt-0.5">${esc(l.note)}</p>`:''}
+        </div>`;
+    }
+    if (rf.discrepancies?.length) {
+      h += `<p class="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 mt-2">Discrepancies</p>`;
+      for (const d of rf.discrepancies)
+        h += `<div class="py-1.5 border-b border-outline-variant/10 last:border-0">
+          <div class="flex justify-between font-semibold">${esc(d.lender)} · ${esc(d.type)}<span>₹${esc(d.emi)}</span></div>
+          <div class="flex justify-between text-on-surface-variant mt-0.5">
+            <span>O/S ₹${esc(d.outstanding)}</span><span class="text-error italic">${esc(d.issue)}</span>
+          </div></div>`;
+    }
+    if (rf.recent_loans?.length) {
+      h += `<p class="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5">Recent Loans</p>`;
+      for (const l of rf.recent_loans)
+        h += `<div class="flex justify-between py-1.5 border-b border-outline-variant/10 last:border-0">
+          <span>${esc(l.month)} · <b>${esc(l.type)}</b> · ${esc(l.lender)}</span>
+          <span class="font-bold">₹${esc(l.amount)}</span></div>`;
+    }
+    if (rf.type==='recent_delinquency'||rf.type==='historical_delinquency') {
+      for (const [k,v] of [['Lender',rf.lender],['Type',rf.loan_type],['Month',rf.delinquency_month],
+                           ['Max DPD',`${rf.max_dpd} days`],['Status',rf.status],['Outstanding',`₹${rf.outstanding}`]])
+        if (v!=null) h+=`<div class="flex justify-between py-1 border-b border-outline-variant/10 last:border-0">
+          <span class="text-on-surface-variant">${k}</span><span class="font-semibold">${esc(String(v))}</span></div>`;
+    }
+    if (rf.type==='declining_abb') {
+      for (const [k,v] of [['Start',`₹${rf.start_value}`],['End',`₹${rf.end_value}`],['Decline',rf.decline_pct],['Period',rf.period]])
+        if (v!=null) h+=`<div class="flex justify-between py-1 border-b border-outline-variant/10 last:border-0">
+          <span class="text-on-surface-variant">${k}</span><span class="font-semibold">${esc(String(v))}</span></div>`;
+    }
+    if (rf.type==='business_income_stopped')
+      h+=`<div class="flex justify-between py-1 border-b border-outline-variant/10">
+        <span class="text-on-surface-variant">Zero months</span>
+        <span class="font-semibold">${esc((rf.zero_income_months||[]).join(', '))}</span></div>
+        <div class="flex justify-between py-1">
+        <span class="text-on-surface-variant">Pattern</span>
+        <span class="font-semibold">₹${esc(rf.decline_pattern)}</span></div>`;
+    return h;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Data points (from copilot)
+  ────────────────────────────────────────────────────────────── */
+  function updateDataPoints(dps) {
+    if (!dps?.length) return;
+    dpSection.classList.remove('hidden');
+    dpCards.innerHTML = '';
+    const styles = {
+      confirmed:'bg-secondary-container/40 text-on-secondary-container',
+      claimed:'bg-amber-100 text-amber-800',
+      pending:'bg-pink-50 text-pink-700',
+      flagged:'bg-error-container/30 text-on-error-container',
+    };
+    for (const dp of dps) {
+      const st = (dp.status||'confirmed').toLowerCase();
+      const pill = styles[st] || styles.confirmed;
+      const row = document.createElement('div');
+      row.className = 'p-3 bg-white/60 rounded-xl border border-outline-variant/10 flex flex-col gap-1 fade-in';
+      row.innerHTML = `
+        <div class="flex justify-between items-start gap-2">
+          <span class="text-xs font-semibold">${esc(dp.label)}</span>
+          <span class="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${pill} shrink-0">${esc(st)}</span>
+        </div>
+        ${dp.value ? `<p class="text-[10px] text-on-surface-variant">${esc(dp.value)}</p>` : ''}`;
+      dpCards.appendChild(row);
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Checklist
+  ────────────────────────────────────────────────────────────── */
+  function checklistItemHTML(item) {
+    const {status, label} = item;
+    if (status === 'verified') return `
+      <div class="flex items-center justify-between p-2 bg-secondary-container/10 border border-secondary/10 rounded-lg fade-in">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-secondary text-base ms-fill">check_circle</span>
+          <span class="text-[11px] font-semibold text-secondary">${esc(label)}</span>
+        </div>
+        <span class="text-[8px] font-bold text-secondary uppercase">VERIFIED</span>
+      </div>`;
+    if (status === 'discussed') return `
+      <div class="flex items-center justify-between p-2 bg-surface-container border border-secondary/10 rounded-lg fade-in">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-secondary/60 text-base ms-fill">check_circle</span>
+          <span class="text-[11px] font-semibold text-on-surface-variant">${esc(label)}</span>
+        </div>
+        <span class="text-[8px] font-bold text-on-surface-variant/60 uppercase">DISCUSSED</span>
+      </div>`;
+    if (status === 'warning') return `
+      <div class="flex items-center justify-between p-2 bg-error-container/5 border border-error/10 rounded-lg fade-in">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-error text-base ms-fill">error</span>
+          <span class="text-[11px] font-semibold text-error">${esc(label)}</span>
+        </div>
+        <span class="text-[8px] font-bold text-error uppercase">WARNING</span>
+      </div>`;
+    return `
+      <div class="flex items-center justify-between p-2 bg-surface-container-low border border-outline-variant/5 rounded-lg">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-on-surface-variant/40 text-base">circle</span>
+          <span class="text-[11px] font-semibold text-on-surface-variant">${esc(label)}</span>
+        </div>
+        <span class="material-symbols-outlined text-on-surface-variant/40 text-xs">more_horiz</span>
+      </div>`;
+  }
+
+  function renderChecklist() {
+    const income = checklistItems.filter(it => it.section === 'income');
+    const flags  = checklistItems.filter(it => it.section === 'flags');
+    checklistIncome.innerHTML = income.length ? income.map(checklistItemHTML).join('') : '<p class="text-[10px] text-on-surface-variant/50 py-1">No items</p>';
+    checklistFlags.innerHTML  = flags.length  ? flags.map(checklistItemHTML).join('')  : '<p class="text-[10px] text-on-surface-variant/50 py-1">No flags</p>';
+  }
+
+  function initChecklist(sc) {
+    checklistItems = (sc.checklist || []).map(it => ({...it, status: 'pending'}));
+    renderChecklist();
+  }
+
+  function updateChecklistItems(updates) {
+    if (!updates?.length) return;
+    let changed = false;
+    for (const u of updates) {
+      const item = checklistItems.find(it => it.id === u.id);
+      if (item && item.status !== u.status) { item.status = u.status; changed = true; }
+    }
+    if (changed) renderChecklist();
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Transcript helpers
+  ────────────────────────────────────────────────────────────── */
+  /* ── Thinking placeholder card ─────────────────────────────────── */
+  function addThinkingCard() {
+    aiAnalyzingDot.classList.remove('hidden');
+    aiAnalyzingDot.classList.add('flex');
+  }
+  function removeThinkingCard() {
+    aiAnalyzingDot.classList.add('hidden');
+    aiAnalyzingDot.classList.remove('flex');
+    const el = document.getElementById('copilot-thinking-card');
+    if (el) el.remove();
+  }
+
+  function addTranscriptBubble(speaker, _color, text) {
+    transcriptEmpty.style.display = 'none';
+    const isUW = speaker === 'Underwriter';
+    const wrap = document.createElement('div');
+    wrap.className = `flex flex-col ${isUW ? 'items-end' : 'items-start'} fade-in`;
+    if (isUW) {
+      wrap.innerHTML = `
+        <div class="max-w-[85%] p-4 bg-primary-container text-on-primary-container rounded-2xl rounded-tr-none shadow-sm">
+          <p class="text-sm font-medium leading-relaxed">${esc(text)}</p>
+        </div>
+        <span class="text-[10px] text-on-surface-variant mt-1 mr-1 font-label">UNDERWRITER · ${timeStr()}</span>`;
+    } else {
+      wrap.innerHTML = `
+        <div class="max-w-[85%] p-4 bg-surface-container-lowest text-on-surface border border-surface-container-high rounded-2xl rounded-tl-none shadow-sm">
+          <p class="text-sm font-medium leading-relaxed">${esc(text)}</p>
+        </div>
+        <span class="text-[10px] text-on-surface-variant mt-1 ml-1 font-label">BORROWER · ${timeStr()}</span>`;
+    }
+    transcriptFeed.appendChild(wrap);
+    scrollBot(transcriptFeed);
+  }
+
+  function addCopilotCard(question, reason, stage, model, detail) {
+    const cid = ++copilotCardId;
+    // Store context for "Ask about this"
+    const contextStr = [stage, question, detail || reason].filter(Boolean).join(' — ');
+    copilotContextMap.set(cid, { question, reason, stage, detail, contextStr });
+
+    const iconName = stage?.toLowerCase().includes('foir') ? 'calculate'
+      : stage?.toLowerCase().includes('income') ? 'payments'
+      : stage?.toLowerCase().includes('supplier') ? 'receipt_long'
+      : stage?.toLowerCase().includes('delinquency') ? 'credit_score'
+      : 'auto_awesome';
+    const modelLabel = model === 'gemini' ? 'Gemini 2.5 Flash' : model === 'openai' ? 'GPT-4o mini' : model;
+    const detailText = detail || reason || '';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'relative py-1 fade-in';
+    wrap.innerHTML = `
+      <div class="absolute left-0 top-3 bottom-3 w-0.5 bg-secondary/40 rounded-full"></div>
+      <div class="ml-4 glass-panel border border-secondary/20 p-4 rounded-2xl shadow-md">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary text-lg ms-fill">${iconName}</span>
+            <span class="text-[10px] font-extrabold font-headline tracking-widest text-secondary uppercase">
+              ${stage ? esc(stage) : 'AI Copilot'}</span>
+          </div>
+          <span class="text-[8px] text-on-surface-variant/40">${esc(modelLabel)}</span>
+        </div>
+        <!-- Short question — always visible -->
+        <p class="text-sm font-bold text-on-surface leading-snug">${esc(question)}</p>
+        <!-- Toggle button -->
+        ${detailText ? `
+        <button onclick="(function(btn){
+          const det=btn.closest('.glass-panel').querySelector('.copilot-detail');
+          const open=det.classList.toggle('hidden');
+          btn.querySelector('.toggle-icon').textContent=open?'expand_more':'expand_less';
+          btn.querySelector('.toggle-label').textContent=open?'Details':'Hide';
+        })(this)"
+          class="mt-1.5 flex items-center gap-0.5 text-[10px] text-on-surface-variant/60 hover:text-secondary transition-all">
+          <span class="material-symbols-outlined text-xs toggle-icon">expand_more</span>
+          <span class="toggle-label">Details</span>
+        </button>
+        <div class="copilot-detail hidden mt-2 pt-2 border-t border-surface-variant/30">
+          <p class="text-[11px] text-on-surface-variant leading-relaxed">${esc(detailText)}</p>
+          <button onclick="window.openChatPanel(${cid})"
+                  class="mt-2 flex items-center gap-1.5 text-primary font-bold text-[11px] hover:underline transition-all">
+            <span class="material-symbols-outlined text-sm">chat_bubble</span>
+            Ask about this
+          </button>
+        </div>` : `
+        <button onclick="window.openChatPanel(${cid})"
+                class="mt-3 flex items-center gap-1.5 text-primary font-bold text-[11px] hover:underline transition-all">
+          <span class="material-symbols-outlined text-sm">chat_bubble</span>
+          Ask about this
+        </button>`}
+      </div>`;
+    transcriptFeed.appendChild(wrap);
+    scrollBot(transcriptFeed);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Right panel: AI Chat
+  ────────────────────────────────────────────────────────────── */
+  const chatEmpty = document.getElementById('chatEmpty');
+
+  window.openChatPanel = (cid) => {
+    const ctx = copilotContextMap.get(cid);
+    if (!ctx) return;
+    currentChatContext = ctx.contextStr;
+    chatHistory = [];
+    chatContextText.textContent = ctx.question;
+    // Clear messages but keep placeholder hidden
+    chatMessages.innerHTML = '';
+    chatMessages.appendChild(chatEmpty);  // re-attach placeholder
+    chatEmpty.classList.add('hidden');
+    chatContext.classList.remove('hidden');
+    requestAnimationFrame(() => { chatMessages.scrollTop = chatMessages.scrollHeight; });
+    chatInput.focus();
+  };
+
+  window.closeChatPanel = () => {
+    currentChatContext = '';
+    chatContext.classList.add('hidden');
+    chatMessages.innerHTML = '';
+    chatMessages.appendChild(chatEmpty);
+    chatEmpty.classList.remove('hidden');
+    chatHistory = [];
+  };
+
+  window.sendChatMessage = async () => {
+    const q = chatInput.value.trim();
+    if (!q) return;
+    chatInput.value = '';
+
+    // Add user message
+    addChatMsg('user', q);
+    chatHistory.push({ role: 'user', content: q });
+
+    // Typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'flex items-start gap-2';
+    typingEl.innerHTML = `
+      <div class="w-6 h-6 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 mt-0.5">
+        <span class="material-symbols-outlined text-secondary text-xs ms-fill">auto_awesome</span>
+      </div>
+      <div class="bg-surface-container-high px-3 py-2.5 rounded-2xl rounded-tl-none">
+        <div class="chat-typing"><span></span><span></span><span></span></div>
+      </div>`;
+    chatMessages.appendChild(typingEl);
+    scrollBot(chatMessages);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: q,
+          context: currentChatContext,
+          case_id: currentCaseId,
+          history: chatHistory.slice(0,-1),
+          provider: currentProvider,
+        })
+      });
+      const data = await res.json();
+      typingEl.remove();
+      const answer = data.answer || data.error || 'No response.';
+      addChatMsg('ai', answer, data.model);
+      chatHistory.push({ role: 'assistant', content: answer });
+    } catch (err) {
+      typingEl.remove();
+      addChatMsg('ai', 'Error: could not reach server.');
+    }
+  };
+
+  /* Lightweight markdown → HTML for chat responses */
+  function renderMd(text) {
+    // Escape HTML first to prevent XSS, then apply markdown
+    let s = text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Bold: **text**
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Bullet lines: lines starting with * or - or •
+    const lines = s.split('\n');
+    const out = [];
+    let inList = false;
+    for (const line of lines) {
+      const bullet = line.match(/^\s*[\*\-•]\s+(.+)/);
+      if (bullet) {
+        if (!inList) { out.push('<ul class="list-disc list-inside space-y-0.5 mt-1">'); inList = true; }
+        out.push(`<li>${bullet[1]}</li>`);
+      } else {
+        if (inList) { out.push('</ul>'); inList = false; }
+        if (line.trim()) out.push(`<p class="mt-1">${line}</p>`);
+      }
+    }
+    if (inList) out.push('</ul>');
+    return out.join('');
+  }
+
+  function addChatMsg(role, text, model) {
+    chatEmpty?.classList.add('hidden'); // hide placeholder once messages arrive
+    const isUser = role === 'user';
+    const div = document.createElement('div');
+    div.className = `flex ${isUser ? 'justify-end' : 'items-start gap-2'} fade-in`;
+    if (isUser) {
+      div.innerHTML = `
+        <div class="max-w-[85%] px-3.5 py-2.5 bg-primary text-on-primary rounded-2xl rounded-tr-none shadow-sm">
+          <p class="text-xs font-medium leading-relaxed">${esc(text)}</p>
+        </div>`;
+    } else {
+      const modelLabel = model === 'gemini' ? 'Gemini 2.5 Flash' : model === 'openai' ? 'GPT-4o mini' : 'AI';
+      div.innerHTML = `
+        <div class="w-6 h-6 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 mt-0.5">
+          <span class="material-symbols-outlined text-secondary text-xs ms-fill">auto_awesome</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="bg-surface-container-high px-3.5 py-2.5 rounded-2xl rounded-tl-none shadow-sm">
+            <div class="text-xs leading-relaxed text-on-surface">${renderMd(text)}</div>
+          </div>
+          ${model?`<p class="text-[9px] text-on-surface-variant/50 mt-0.5 ml-1">${esc(modelLabel)}</p>`:''}
+        </div>`;
+    }
+    chatMessages.appendChild(div);
+    scrollBot(chatMessages);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Notes
+  ────────────────────────────────────────────────────────────── */
+  window.submitNote = () => {
+    const input = document.getElementById('noteInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const note = document.createElement('div');
+    note.className = 'flex justify-center fade-in';
+    note.innerHTML = `
+      <div class="px-4 py-2 bg-amber-50 border border-amber-200 rounded-full text-[11px] text-amber-800 font-medium flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-sm text-amber-600">edit_note</span>
+        Note: ${esc(text)}
+      </div>`;
+    transcriptFeed.appendChild(note);
+    scrollBot(transcriptFeed);
+    input.value = '';
+  };
+
+  /* ──────────────────────────────────────────────────────────────
+     Timer
+  ────────────────────────────────────────────────────────────── */
+  function startTimer() {
+    callSeconds = 0;
+    liveTimer.classList.remove('hidden');
+    liveTimer.classList.add('flex');
+    timerInterval = setInterval(() => {
+      callSeconds++;
+      const m = String(Math.floor(callSeconds/60)).padStart(2,'0');
+      const s = String(callSeconds%60).padStart(2,'0');
+      timerDisplay.textContent = `${m}:${s}`;
+    }, 1000);
+  }
+  function stopTimer() {
+    clearInterval(timerInterval);
+    liveTimer.classList.add('hidden');
+    liveTimer.classList.remove('flex');
+  }
+
+  window.setProvider = (p) => {
+    currentProvider = p;
+    // Update button styles
+    document.getElementById('providerGemini').className = p === 'gemini'
+      ? 'px-3 py-1 rounded-full text-xs font-bold transition-all bg-primary text-on-primary'
+      : 'px-3 py-1 rounded-full text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface';
+    document.getElementById('providerOpenAI').className = p === 'openai'
+      ? 'px-3 py-1 rounded-full text-xs font-bold transition-all bg-primary text-on-primary'
+      : 'px-3 py-1 rounded-full text-xs font-bold transition-all text-on-surface-variant hover:text-on-surface';
+    // Notify server
+    if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'set_provider', provider: p }));
+  };
+
+  /* ──────────────────────────────────────────────────────────────
+     Session controls
+  ────────────────────────────────────────────────────────────── */
+  window.toggleRecording = () => {
+    if (isRecording) {
+      isRecording = false;
+      ws?.send(JSON.stringify({ type: 'stop' }));
+      recordBtn.textContent = 'Start';
+      recordBtn.classList.remove('bg-error');
+      recordBtn.classList.add('bg-primary');
+      stopTimer();
+    } else {
+      isRecording = true;
+      ws?.send(JSON.stringify({ type: 'start' }));
+      recordBtn.textContent = 'Stop';
+      recordBtn.classList.remove('bg-primary');
+      recordBtn.classList.add('bg-error');
+      startTimer();
+    }
+  };
+
+  window.backToPicker = () => {
+    if (isRecording) window.toggleRecording();
+    window.closeChatPanel();
+    picker.style.display = 'flex';
+    mainPanel.classList.add('hidden');
+    mainPanel.classList.remove('flex');
+    sessionControls.classList.add('hidden');
+    sessionControls.classList.remove('flex');
+    headerBorrower.classList.add('hidden');
+    stopTimer();
+    currentCaseId = null;
+    checklistItems = [];
+    renderChecklist();
+  };
+
+  /* ──────────────────────────────────────────────────────────────
+     AudioWorklet
+  ────────────────────────────────────────────────────────────── */
+  const WORKLET_CODE = `
+class PCMProcessor extends AudioWorkletProcessor {
+  constructor() { super(); this._buf = []; }
+  process(inputs) {
+    const ch = inputs[0]?.[0]; if (!ch) return true;
+    const step = sampleRate / 16000;
+    for (let i = 0; i < ch.length; i += step) this._buf.push(ch[Math.floor(i)]);
+    while (this._buf.length >= 1024) {
+      const s = this._buf.splice(0,1024), p = new Int16Array(1024);
+      for (let i=0;i<1024;i++) p[i]=Math.max(-32768,Math.min(32767,s[i]*32767|0));
+      this.port.postMessage(p.buffer,[p.buffer]);
+    }
+    return true;
+  }
+}
+registerProcessor('pcm-processor',PCMProcessor);`;
+
+  /* ──────────────────────────────────────────────────────────────
+     WebSocket + message handler
+  ────────────────────────────────────────────────────────────── */
+  async function connectWs() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+      });
+    } catch { return; }
+
+    captureCtx = new AudioContext();
+    const src = captureCtx.createMediaStreamSource(micStream);
+    const blob = new Blob([WORKLET_CODE], { type: 'text/javascript' });
+    const url  = URL.createObjectURL(blob);
+    await captureCtx.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+
+    workletNode = new AudioWorkletNode(captureCtx, 'pcm-processor');
+    src.connect(workletNode);
+    workletNode.port.onmessage = ev => {
+      if (ws?.readyState === 1 && isRecording) ws.send(ev.data);
+    };
+
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${location.host}/ws`);
+    ws.binaryType = 'arraybuffer';
+
+    return new Promise(resolve => {
+      ws.onopen  = () => { connected = true; resolve(); };
+      ws.onclose = () => { connected = false; };
+      ws.onerror = () => resolve();
+      ws.onmessage = handleMessage;
+    });
+  }
+
+  function handleMessage(e) {
+    if (typeof e.data !== 'string') return;
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'scenario_loaded') {
+      // Show main panel
+      picker.style.display = 'none';
+      mainPanel.classList.remove('hidden');
+      mainPanel.classList.add('flex');
+      sessionControls.classList.remove('hidden');
+      sessionControls.classList.add('flex');
+      headerBorrower.classList.remove('hidden');
+      headerBorrower.textContent = msg.name;
+
+      // Reset transcript
+      transcriptFeed.innerHTML = '';
+      transcriptFeed.appendChild(transcriptEmpty);
+      transcriptEmpty.style.display = '';
+      dpSection.classList.add('hidden');
+      dpCards.innerHTML = '';
+      window.closeChatPanel();
+      chatHistory = [];
+      copilotCardId = 0;
+      copilotContextMap.clear();
+      removeThinkingCard();
+      checklistItems = [];
+      renderChecklist();
+
+      // Populate left panel from the scenarios array (has all fields)
+      const sc = scenarios.find(s => s.case_id === msg.case_id) || {};
+      populateLeftPanel(sc);
+      initChecklist(sc);
+      return;
+    }
+
+    if (msg.type === 'transcript') addTranscriptBubble(msg.speaker, msg.color, msg.text);
+
+    if (msg.type === 'copilot_thinking') addThinkingCard();
+
+    if (msg.type === 'copilot') {
+      removeThinkingCard();
+      if (msg.checklist_updates?.length) updateChecklistItems(msg.checklist_updates);
+      // Show inline card for suggestions, discrepancies, and conversation gaps
+      if (msg.trigger === 'discrepancy' || msg.trigger === 'gap' || msg.trigger === 'suggestion') {
+        addCopilotCard(msg.question, msg.reason, msg.stage, msg.model, msg.detail);
+      }
+      if (msg.data_points?.length) updateDataPoints(msg.data_points);
+    }
+
+    if (msg.type === 'state') {
+      if (msg.value === 'recording') {
+        statusPill.classList.remove('hidden');
+        statusPill.classList.add('flex');
+        statusPillText.textContent = 'Live Recording';
+      }
+      if (msg.value === 'stopped') {
+        statusPill.classList.add('hidden');
+        statusPill.classList.remove('flex');
+      }
+    }
+  }
+
+  /* ── Boot ── */
+  loadScenarios();
+})();
+</script>
+</body>
+</html>
