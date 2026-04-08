@@ -78,8 +78,8 @@ else:
 # ── Audio config ─────────────────────────────────────────────────
 SAMPLE_RATE       = 16000
 RMS_THRESHOLD     = 400
-SILENCE_FRAMES    = 14       # ~900ms silence to cut a segment — avoids splitting mid-sentence pauses
-MIN_SPEECH_FRAMES = 4
+SILENCE_FRAMES    = 8        # ~512ms silence to cut a segment — catches turn changes without splitting mid-sentence
+MIN_SPEECH_FRAMES = 3
 
 # ── Speaker config ───────────────────────────────────────────────
 SPEAKER_NAMES  = ["Speaker A", "Speaker B"]
@@ -933,8 +933,9 @@ async def meeting_ws(ws: WebSocket):
 
         full_transcript.append(f"{role}: {text}")
 
-        # Trigger copilot after Borrower (idx=1) speaks
-        if speaker_idx == 1 and active_scenario and len(full_transcript) >= 2:
+        # Trigger copilot after every segment (not just Borrower) — diarization may be imperfect,
+        # so we let the LLM decide what to suggest based on the full transcript
+        if active_scenario and len(full_transcript) >= 2:
             # Instant "thinking" ping so UI shows a placeholder card immediately
             await ws.send_text(json.dumps({"type": "copilot_thinking"}))
             asyncio.create_task(generate_copilot_suggestion())
