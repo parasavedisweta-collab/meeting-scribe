@@ -2,9 +2,9 @@ fastapi
 uvicorn
 numpy
 faster-whisper
-ollama
 speechbrain>=1.0.0
 torch
 torchaudio
 scikit-learn
 openai
+google-genai
