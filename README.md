@@ -7,6 +7,7 @@ A real-time AI assistant for loan underwriters. It listens to live conversations
 - **Live transcription** — speech-to-text using faster-whisper (runs locally, no cloud STT costs)
 - **Speaker diarization** — automatically tags Underwriter vs Borrower turns
 - **AI Copilot** — suggests next questions following income assessment → red flag sequence
+- **Interactive chat** — underwriter can ask the AI anything mid-call (e.g. "what is the FOIR?", "should I approve this?") and get instant answers in context
 - **Question checklist** — tracks which topics have been covered in real time
 - **Dual LLM support** — toggle between Gemini 2.5 Flash and GPT-4o-mini
 - **Demo scenarios** — pre-loaded borrower profiles (Vikram Malhotra, Priya Mehta) for testing
@@ -63,9 +64,10 @@ Open **http://localhost:8001** in your browser.
 1. Select a borrower scenario from the left panel
 2. Click **Record** to start listening
 3. Have the underwriter-borrower conversation — the transcript appears live
-4. AI suggestions appear in the right panel after each borrower response
-5. Use the **Gemini / ChatGPT** toggle in the nav to switch LLM providers
-6. Type questions in the chat panel to ask the AI about the case
+4. AI suggestions appear in the right panel after each segment, guiding the underwriter on what to ask next
+5. **Chat with the AI** — type any question in the chat panel mid-call (e.g. *"What is this borrower's FOIR?"*, *"Should I ask for more documents?"*) and get instant context-aware answers
+6. The checklist on the right tracks which income and red flag topics have been covered
+7. Use the **Gemini / ChatGPT** toggle in the nav to switch LLM providers at any time
 
 ## Project Structure
 
