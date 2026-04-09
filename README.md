@@ -1,6 +1,6 @@
 # Meeting Scribe — AI Underwriting Copilot
 
-A real-time AI assistant for loan underwriters. It listens to live conversations with borrowers, transcribes speech, identifies speakers, and suggests the next best question based on underwriting methodology.
+A real-time AI assistant for loan underwriters. It listens to live conversations between underwriter and borrower, transcribes speech, identifies speakers (i.e. who is underwriter vs who is borrower), and suggests the next best question based on underwriting methodology.
 
 ## Features
 
